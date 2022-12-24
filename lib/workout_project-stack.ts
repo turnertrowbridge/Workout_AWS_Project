@@ -12,6 +12,7 @@ import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
 import fs = require('fs');
 import {SqsEventSource} from "aws-cdk-lib/aws-lambda-event-sources";
 import {AssetCode} from "aws-cdk-lib/aws-lambda";
+import {SecretValue} from "aws-cdk-lib";
 
 export class WorkoutProjectStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -28,15 +29,15 @@ export class WorkoutProjectStack extends cdk.Stack {
     const vpc =  new ec2.Vpc(this, "workout_vpc");
 
 
-    const secret = new rds.DatabaseSecret(this, 'MySQLSecret', {
-      username: 'ttrow',
-    });
+    // const secret = new rds.DatabaseSecret(this, 'MySQLSecret', {
+    //   username: 'ttrow',
+    // });
 
     // create MySQL table
     const workoutTable =  new rds.DatabaseInstance(this, 'WorkoutTracking_Table', {
       engine: rds.DatabaseInstanceEngine.MYSQL,
       vpc,
-      credentials: { username: 'ttrow' },
+      credentials: { username: 'ttrow', password: SecretValue.unsafePlainText('Socks_isafun_dog14') },
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
     });
 
@@ -62,8 +63,11 @@ export class WorkoutProjectStack extends cdk.Stack {
     const add_workout_lambda = new lambda.Function(this, "add_workout_lambda_function", {
       code: new AssetCode("./lambda"),
       runtime: lambda.Runtime.PYTHON_3_9,
-      handler: 'add_workout_lambda.lambda_handler',
+      handler: 'add_workout_lambda.lambda_handler'
     });
+
+    // workout_lambdaRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName(
+    //     "service-role/AWSLambdaVPCAccessExecutionRole"));
 
 
     // permit add_workout to write to table
