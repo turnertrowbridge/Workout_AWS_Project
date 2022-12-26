@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as rds from 'aws-cdk-lib/aws-rds';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
@@ -11,6 +11,7 @@ import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
 
 import fs = require('fs');
 import {SqsEventSource} from "aws-cdk-lib/aws-lambda-event-sources";
+import {AssetCode} from "aws-cdk-lib/aws-lambda";
 
 export class WorkoutProjectStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -27,9 +28,16 @@ export class WorkoutProjectStack extends cdk.Stack {
     const vpc =  new ec2.Vpc(this, "workout_vpc");
 
 
-    // create dynamodb table
-    const workoutTable = new dynamodb.Table(this, 'WorkoutTracking_Table', {
-      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+    const secret = new rds.DatabaseSecret(this, 'MySQLSecret', {
+      username: 'ttrow',
+    });
+
+    // create MySQL table
+    const workoutTable =  new rds.DatabaseInstance(this, 'WorkoutTracking_Table', {
+      engine: rds.DatabaseInstanceEngine.MYSQL,
+      vpc,
+      credentials: { username: 'ttrow' },
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
     });
 
 
@@ -52,28 +60,26 @@ export class WorkoutProjectStack extends cdk.Stack {
 
     // create add_workout lambda
     const add_workout_lambda = new lambda.Function(this, "add_workout_lambda_function", {
-      code: lambda.Code.fromAsset("./lambda/add_workout.py"),
+      code: new AssetCode("./lambda"),
       runtime: lambda.Runtime.PYTHON_3_9,
       handler: 'add_workout_lambda.lambda_handler',
     });
 
-    add_workout_lambda.addEnvironment("TABLE_NAME", workoutTable.tableName);
 
     // permit add_workout to write to table
-    workoutTable.grantWriteData(add_workout_lambda);
+    workoutTable.grantConnect(add_workout_lambda);
 
 
     // create read_workout lambda
     const read_workout_lambda = new lambda.Function(this, "readWorkout_lambda_function", {
-      code: lambda.Code.fromAsset("./lambda/read_workout.py"),
+      code: new AssetCode("./lambda"),
       runtime: lambda.Runtime.PYTHON_3_9,
       handler: 'read_workout_lambda.lambda_handler',
     });
 
-    read_workout_lambda.addEnvironment("TABLE_NAME", workoutTable.tableName);
 
      // permit read_workout to read from table
-    workoutTable.grantReadData(read_workout_lambda);
+    workoutTable.grantConnect(read_workout_lambda);
 
 
     // add sqs queue as event source for lambda
