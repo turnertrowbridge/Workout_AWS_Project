@@ -2,9 +2,35 @@ import sys
 import logging
 import rds_config
 import pymysql
+import boto3
+from botocore.exceptions import ClientError
 
-#rds settings
-rds_host  = "rds-instance-endpoint"
+
+# def get_secret():
+#
+#
+#     # Create a Secrets Manager client
+#     session = boto3.session.Session()
+#     client = session.client(
+#         service_name='secretsmanager',
+#         region_name=rds_config.region_name
+#     )
+#
+#     try:
+#         get_secret_value_response = client.get_secret_value(
+#             SecretId=rds_config.secret_name
+#         )
+#     except ClientError as e:
+#         # For a list of exceptions thrown, see
+#         # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+#         raise e
+#
+#     # Decrypts secret using the associated KMS key.
+#     return get_secret_value_response['SecretString']
+
+
+# rds settings
+rds_host = rds_config.db_endpoint
 name = rds_config.db_username
 password = rds_config.db_password
 db_name = rds_config.db_name
@@ -24,6 +50,11 @@ def handler(event, context):
     """
     This function fetches content from MySQL RDS instance
     """
+
+    # s3 = boto3.client('s3')
+    # data = s3.get_object(Bucket='workoutprojectstack-testbucketworkout12327b145c6-s0isntjv74xa', Key='test_input.txt')
+    # contents = data['Body'].read()
+    # print(contents)
 
     item_count = 0
 

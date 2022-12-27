@@ -1,18 +1,16 @@
 import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import {RemovalPolicy} from 'aws-cdk-lib';
+import {Construct} from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as path from 'path';
+import {AssetCode} from 'aws-cdk-lib/aws-lambda';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
-
-import fs = require('fs');
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import {SqsEventSource} from "aws-cdk-lib/aws-lambda-event-sources";
-import {AssetCode} from "aws-cdk-lib/aws-lambda";
-import {SecretValue} from "aws-cdk-lib";
 
 export class WorkoutProjectStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -28,18 +26,42 @@ export class WorkoutProjectStack extends cdk.Stack {
     // create vpc
     const vpc =  new ec2.Vpc(this, "workout_vpc");
 
+    const bucket = new s3.Bucket(this, 'test-bucket-workout-123', {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
+    new s3deploy.BucketDeployment(this, 'DeployFiles', {
+      sources: [s3deploy.Source.asset('./test-files')], // 'folder' contains your empty files at the right locations
+      destinationBucket: bucket,
+    });
 
     // const secret = new rds.DatabaseSecret(this, 'MySQLSecret', {
     //   username: 'ttrow',
     // });
 
+    // add security group
+    const mySG = new ec2.SecurityGroup(this, 'security-group 1', {
+      vpc: vpc,
+      allowAllOutbound: true,
+      description: 'CDK Security Group'
+    });
+
+    mySG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(3306), 'MySQL Connect');
+
     // create MySQL table
     const workoutTable =  new rds.DatabaseInstance(this, 'WorkoutTracking_Table', {
       engine: rds.DatabaseInstanceEngine.MYSQL,
       vpc,
-      credentials: { username: 'ttrow', password: SecretValue.unsafePlainText('Socks_isafun_dog14') },
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
+      credentials: rds.Credentials.fromGeneratedSecret('ttrow99'),
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
+      securityGroups: [mySG],
+      publiclyAccessible: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      vpcSubnets: {subnetType: ec2.SubnetType.PUBLIC}
     });
+
+    workoutTable.connections.allowDefaultPortFromAnyIpv4();
 
 
     // sns queue creation
@@ -63,7 +85,7 @@ export class WorkoutProjectStack extends cdk.Stack {
     const add_workout_lambda = new lambda.Function(this, "add_workout_lambda_function", {
       code: new AssetCode("./lambda"),
       runtime: lambda.Runtime.PYTHON_3_9,
-      handler: 'add_workout_lambda.lambda_handler'
+      handler: 'add_workout.lambda_handler'
     });
 
     // workout_lambdaRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName(
@@ -75,10 +97,10 @@ export class WorkoutProjectStack extends cdk.Stack {
 
 
     // create read_workout lambda
-    const read_workout_lambda = new lambda.Function(this, "readWorkout_lambda_function", {
+    const read_workout_lambda = new lambda.Function(this, "read_workout_lambda_function", {
       code: new AssetCode("./lambda"),
       runtime: lambda.Runtime.PYTHON_3_9,
-      handler: 'read_workout_lambda.lambda_handler',
+      handler: 'read_workout.lambda_handler',
     });
 
 
