@@ -4,13 +4,13 @@ import {Construct} from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import {AssetCode} from 'aws-cdk-lib/aws-lambda';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import {SqsEventSource} from "aws-cdk-lib/aws-lambda-event-sources";
+import * as path from 'path';
 
 export class WorkoutProjectStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -24,7 +24,7 @@ export class WorkoutProjectStack extends cdk.Stack {
     // });
 
     // create vpc
-    const vpc =  new ec2.Vpc(this, "workout_vpc");
+    const vpc =  new ec2.Vpc(this, "workout-vpc");
 
     const bucket = new s3.Bucket(this, 'test-bucket-workout-123', {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -50,7 +50,7 @@ export class WorkoutProjectStack extends cdk.Stack {
     mySG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(3306), 'MySQL Connect');
 
     // create MySQL table
-    const workoutTable =  new rds.DatabaseInstance(this, 'WorkoutTracking_Table', {
+    const workoutTable =  new rds.DatabaseInstance(this, 'WorkoutTrackingTable', {
       engine: rds.DatabaseInstanceEngine.MYSQL,
       vpc,
       credentials: rds.Credentials.fromGeneratedSecret('ttrow99'),
@@ -81,12 +81,17 @@ export class WorkoutProjectStack extends cdk.Stack {
     });
 
 
-    // create add_workout lambda
-    const add_workout_lambda = new lambda.Function(this, "add_workout_lambda_function", {
-      code: new AssetCode("./lambda"),
-      runtime: lambda.Runtime.PYTHON_3_9,
-      handler: 'add_workout.lambda_handler'
+    const dockerfile = path.join(__dirname, '../zipdeploy');
+    const add_workout_lambda = new lambda.DockerImageFunction(this, "add-workout", {
+      code: lambda.DockerImageCode.fromImageAsset(dockerfile),
+      architecture: lambda.Architecture.ARM_64,
     });
+    // create add_workout lambda
+    // const add_workout_lambda = new lambda.Function(this, "add_workout_lambda_function", {
+    //   code: new lambda.InlineCode("./lambda"),
+    //   runtime: lambda.Runtime.PYTHON_3_9,
+    //   handler: 'add_workout.lambda_handler'
+    // });
 
     // workout_lambdaRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName(
     //     "service-role/AWSLambdaVPCAccessExecutionRole"));
@@ -97,8 +102,8 @@ export class WorkoutProjectStack extends cdk.Stack {
 
 
     // create read_workout lambda
-    const read_workout_lambda = new lambda.Function(this, "read_workout_lambda_function", {
-      code: new AssetCode("./lambda"),
+    const read_workout_lambda = new lambda.Function(this, "read-workout-lambda-function", {
+      code: new lambda.InlineCode("./lambda"),
       runtime: lambda.Runtime.PYTHON_3_9,
       handler: 'read_workout.lambda_handler',
     });
