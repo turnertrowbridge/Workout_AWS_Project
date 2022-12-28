@@ -56,7 +56,7 @@ logger.info("SUCCESS: Connection to RDS MySQL instance succeeded")
 
 
 def lambda_handler(event, context):
-    """
+
     This function fetches content from MySQL RDS instance
     """
 
