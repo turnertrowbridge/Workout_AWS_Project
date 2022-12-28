@@ -2,6 +2,8 @@
 !jest.config.js
 *.d.ts
 node_modules
+lambda/rds_config.py
+
 
 # CDK asset staging directory
 .cdk.staging

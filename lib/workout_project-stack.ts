@@ -81,7 +81,7 @@ export class WorkoutProjectStack extends cdk.Stack {
     });
 
 
-    const dockerfile = path.join(__dirname, '../zipdeploy');
+    const dockerfile = path.join(__dirname, '../lambda');
     const add_workout_lambda = new lambda.DockerImageFunction(this, "add-workout", {
       code: lambda.DockerImageCode.fromImageAsset(dockerfile),
       architecture: lambda.Architecture.ARM_64,

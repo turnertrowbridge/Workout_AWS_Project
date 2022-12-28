@@ -6,6 +6,13 @@ import boto3
 from botocore.exceptions import ClientError
 
 
+
+# db_username = "ttrow99"
+# db_name = "WorkoutTrackingTable"
+# db_endpoint = "workoutprojectstack-workouttrackingtable087385ee-befffhnoqsx8.cpzmyn3b5mc4.us-west-2.rds.amazonaws.com"
+# region_name = "us-west-2"
+# db_password = "r-SPM0tGh-osymdqTGL-mhA=f=0,^H"
+
 # def get_secret():
 #
 #
@@ -30,23 +37,25 @@ from botocore.exceptions import ClientError
 
 
 # rds settings
-rds_host = rds_config.db_endpoint
-name = rds_config.db_username
-password = rds_config.db_password
+db_endpoint = rds_config.db_endpoint
+db_username = rds_config.db_username
+db_password = rds_config.db_password
 db_name = rds_config.db_name
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 try:
-    conn = pymysql.connect(host=rds_host, user=name, passwd=password, db=db_name, connect_timeout=5)
+    conn = pymysql.connect(host=db_endpoint, user=db_username, passwd=db_password, connect_timeout=5)
 except pymysql.MySQLError as e:
     logger.error("ERROR: Unexpected error: Could not connect to MySQL instance.")
     logger.error(e)
     sys.exit()
 
 logger.info("SUCCESS: Connection to RDS MySQL instance succeeded")
-def handler(event, context):
+
+
+def lambda_handler(event, context):
     """
     This function fetches content from MySQL RDS instance
     """
@@ -59,16 +68,22 @@ def handler(event, context):
     item_count = 0
 
     with conn.cursor() as cur:
-        cur.execute("create table Employee ( EmpID  int NOT NULL, Name varchar(255) NOT NULL, PRIMARY KEY (EmpID))")
-        cur.execute('insert into Employee (EmpID, Name) values(1, "Joe")')
-        cur.execute('insert into Employee (EmpID, Name) values(2, "Bob")')
-        cur.execute('insert into Employee (EmpID, Name) values(3, "Mary")')
+        cur.execute('CREATE DATABASE IF NOT EXISTS Workout;')
+        cur.execute('use workout_table')
+        cur.execute("create table if not exists Workout ("
+                    "WorkoutID BINARY(16) PRIMARY KEY,"
+                    "Date DATE NOT NULL,"
+                    "Name varchar(255) NOT NULL,"
+                    "")
+        cur.execute('insert into Workout (Date, Name) values("2022-12-10", "Arms")')
+        cur.execute('insert into Workout (Date, Name) values("2022-12-11", "Legs")')
+        cur.execute('insert into Workout (Date, Name) values("2022-12-12", "Chest")')
         conn.commit()
-        cur.execute("select * from Employee")
+        cur.execute("select * from Workout")
         for row in cur:
             item_count += 1
             logger.info(row)
-            #print(row)
+            print(row)
     conn.commit()
 
     return "Added %d items from RDS MySQL table" %(item_count)

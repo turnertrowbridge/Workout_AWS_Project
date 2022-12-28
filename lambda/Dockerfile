@@ -2,6 +2,7 @@ FROM public.ecr.aws/lambda/python:3.9
 
 # Copy function code
 COPY add_workout.py ${LAMBDA_TASK_ROOT}
+COPY rds_config.py rds_config.py
 
 
 COPY requirements.txt /tmp
