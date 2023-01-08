@@ -8,18 +8,24 @@ import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import {SqsEventSource} from "aws-cdk-lib/aws-lambda-event-sources";
 import * as path from 'path';
 
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class WorkoutProjectStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // create vpc
-    const vpc =  new ec2.Vpc(this, "workout-vpc");
+    const vpc =  new ec2.Vpc(this, "workout-vpc", {
+      subnetConfiguration: [
+        {
+          cidrMask: 24,
+          name: 'app',
+          subnetType: ec2.SubnetType.PRIVATE_ISOLATED
+        }
+      ]
+      });
 
     const bucket = new s3.Bucket(this, 'test-bucket-workout-123', {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -38,11 +44,14 @@ export class WorkoutProjectStack extends cdk.Stack {
     // create MySQL table
     const workoutTable =  new rds.DatabaseInstance(this, 'WorkoutTrackingTable', {
       engine: rds.DatabaseInstanceEngine.MYSQL,
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED
+      },
       vpc,
       credentials: rds.Credentials.fromGeneratedSecret('ttrow99'),
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
       securityGroups: [mySG],
-      publiclyAccessible: true,
+      // publiclyAccessible: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       allocatedStorage: 20,
     });
@@ -72,16 +81,6 @@ export class WorkoutProjectStack extends cdk.Stack {
       code: lambda.DockerImageCode.fromImageAsset(dockerfile),
       architecture: lambda.Architecture.ARM_64,
     });
-    // create add_workout lambda
-    // const add_workout_lambda = new lambda.Function(this, "add_workout_lambda_function", {
-    //   code: new lambda.InlineCode("./lambda"),
-    //   runtime: lambda.Runtime.PYTHON_3_9,
-    //   handler: 'add_workout.lambda_handler'
-    // });
-
-    // workout_lambdaRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName(
-    //     "service-role/AWSLambdaVPCAccessExecutionRole"));
-
 
     // permit add_workout to write to table
     workoutTable.grantConnect(add_workout_lambda);

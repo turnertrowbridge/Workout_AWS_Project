@@ -5,7 +5,14 @@
       <driver-ref>mysql.8</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
-      <jdbc-url>jdbc:mysql://workoutprojectstack-workouttrackingtable087385ee-befffhnoqsx8.cpzmyn3b5mc4.us-west-2.rds.amazonaws.com:3306/</jdbc-url>
+      <jdbc-url>jdbc:mysql://workoutprojectstack-workouttrackingtable087385ee-un8pslakkxqo.cpzmyn3b5mc4.us-west-2.rds.amazonaws.com:3306/workoutprojectstack-workouttrackingtable087385ee-un8pslakkxqo</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+    <data-source source="LOCAL" name="@localhost" uuid="15180423-6240-48e4-ae43-5fc365ca3c88">
+      <driver-ref>mysql.8</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mysql://localhost:3306</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>
