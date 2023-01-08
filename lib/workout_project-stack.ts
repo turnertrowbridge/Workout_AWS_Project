@@ -26,12 +26,14 @@ export class WorkoutProjectStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
+
     // add security group
     const mySG = new ec2.SecurityGroup(this, 'security-group 1', {
       vpc: vpc,
       allowAllOutbound: true,
       description: 'CDK Security Group'
     });
+
 
     // create MySQL table
     const workoutTable =  new rds.DatabaseInstance(this, 'WorkoutTrackingTable', {
@@ -42,7 +44,7 @@ export class WorkoutProjectStack extends cdk.Stack {
       securityGroups: [mySG],
       publiclyAccessible: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      vpcSubnets: {subnetType: ec2.SubnetType.PUBLIC}
+      allocatedStorage: 20,
     });
 
     workoutTable.connections.allowDefaultPortFromAnyIpv4();
