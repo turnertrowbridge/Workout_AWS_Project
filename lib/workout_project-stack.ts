@@ -24,8 +24,10 @@ export class WorkoutProjectStack extends cdk.Stack {
           name: 'app',
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED
         }
-      ]
+      ],
       });
+    vpc.addFlowLog('FlowLogCloudWatch');
+
 
     const bucket = new s3.Bucket(this, 'test-bucket-workout-123', {
       removalPolicy: cdk.RemovalPolicy.DESTROY,

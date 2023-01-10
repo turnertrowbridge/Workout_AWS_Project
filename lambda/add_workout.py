@@ -9,7 +9,6 @@ from botocore.exceptions import ClientError
 db_endpoint = rds_config.db_endpoint
 db_username = rds_config.db_username
 db_password = rds_config.db_password
-db_name = rds_config.db_name
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -40,8 +39,7 @@ def lambda_handler(event, context):
         cur.execute("create table if not exists Workout ("
                     "WorkoutID BINARY(16) PRIMARY KEY,"
                     "Date DATE NOT NULL,"
-                    "Name varchar(255) NOT NULL,"
-                    "")
+                    "Name varchar(255) NOT NULL)")
         cur.execute('insert into Workout (Date, Name) values("2022-12-10", "Arms")')
         cur.execute('insert into Workout (Date, Name) values("2022-12-11", "Legs")')
         cur.execute('insert into Workout (Date, Name) values("2022-12-12", "Chest")')
