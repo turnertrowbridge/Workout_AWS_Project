@@ -17,15 +17,23 @@ export class WorkoutProjectStack extends cdk.Stack {
     super(scope, id, props);
 
     // create vpc
-    const vpc =  new ec2.Vpc(this, "workout-vpc", {
+    const vpc =  new ec2.Vpc(this, 'workout-vpc', {
       subnetConfiguration: [
         {
           cidrMask: 24,
-          name: 'app',
+          name: 'workout-private-vpc',
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED
+        },
+        {
+          cidrMask: 24,
+          name: 'workout-public-vpc',
+          subnetType: ec2.SubnetType.PUBLIC
         }
       ],
+      natGateways: 0
       });
+
+
     vpc.addFlowLog('FlowLogCloudWatch');
 
 
@@ -38,22 +46,24 @@ export class WorkoutProjectStack extends cdk.Stack {
     // add security group
     const mySG = new ec2.SecurityGroup(this, 'security-group 1', {
       vpc: vpc,
-      allowAllOutbound: true,
       description: 'CDK Security Group'
     });
 
+    mySG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'allow ssh access from the world');
+
+    // mySG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(5432));
+    // mySG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(3306));
 
     // create MySQL table
     const workoutTable =  new rds.DatabaseInstance(this, 'WorkoutTrackingTable', {
       engine: rds.DatabaseInstanceEngine.MYSQL,
+      vpc,
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_ISOLATED
       },
-      vpc,
       credentials: rds.Credentials.fromGeneratedSecret('ttrow99'),
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
-      securityGroups: [mySG],
-      // publiclyAccessible: true,
+      publiclyAccessible: false,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       allocatedStorage: 20,
     });
@@ -69,6 +79,8 @@ export class WorkoutProjectStack extends cdk.Stack {
       displayName: 'My New Workout'
     });
 
+
+
     // subscribe queue to topic
     topic.addSubscription(new subs.SqsSubscription(queue));
 
@@ -82,6 +94,7 @@ export class WorkoutProjectStack extends cdk.Stack {
     const add_workout_lambda = new lambda.DockerImageFunction(this, "add-workout", {
       code: lambda.DockerImageCode.fromImageAsset(dockerfile),
       architecture: lambda.Architecture.ARM_64,
+      vpc
     });
 
     // permit add_workout to write to table
@@ -93,6 +106,7 @@ export class WorkoutProjectStack extends cdk.Stack {
       code: new lambda.InlineCode("./lambda"),
       runtime: lambda.Runtime.PYTHON_3_9,
       handler: 'read_workout.lambda_handler',
+      vpc
     });
 
 

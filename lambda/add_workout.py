@@ -12,15 +12,18 @@ db_password = rds_config.db_password
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+# create console handler and set level to debug
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
 
-try:
-    conn = pymysql.connect(host=db_endpoint, user=db_username, passwd=db_password, connect_timeout=5)
-except pymysql.MySQLError as e:
-    logger.error("ERROR: Unexpected error: Could not connect to MySQL instance.")
-    logger.error(e)
-    sys.exit()
+# create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-logger.info("SUCCESS: Connection to RDS MySQL instance succeeded")
+# add formatter to ch
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
 
 
 def lambda_handler(event, context):
@@ -32,23 +35,24 @@ def lambda_handler(event, context):
     # print(contents)
 
     # This function fetches content from MySQL RDS instance
-    item_count = 0
+
+
+    try:
+        conn = pymysql.connect(host=db_endpoint, user=db_username, passwd=db_password, connect_timeout=5)
+    except pymysql.MySQLError as e:
+        logger.error("ERROR: Unexpected error: Could not connect to MySQL instance.")
+        logger.error(e)
+        sys.exit()
+
+    logger.info("SUCCESS: Connection to RDS MySQL instance succeeded")
+
+
     with conn.cursor() as cur:
-        cur.execute('CREATE DATABASE IF NOT EXISTS Workout;')
-        cur.execute('use workout_table')
-        cur.execute("create table if not exists Workout ("
-                    "WorkoutID BINARY(16) PRIMARY KEY,"
-                    "Date DATE NOT NULL,"
-                    "Name varchar(255) NOT NULL)")
+        cur.execute('CREATE DATABASE IF NOT EXISTS Workout')
+        cur.execute('USE Workout')
+        cur.execute("create table if not exists Workout (Date DATE PRIMARY KEY, Name varchar(255))")
         cur.execute('insert into Workout (Date, Name) values("2022-12-10", "Arms")')
         cur.execute('insert into Workout (Date, Name) values("2022-12-11", "Legs")')
         cur.execute('insert into Workout (Date, Name) values("2022-12-12", "Chest")')
         conn.commit()
-        cur.execute("select * from Workout")
-        for row in cur:
-            item_count += 1
-            logger.info(row)
-            print(row)
-    conn.commit()
 
-    return "Added %d items from RDS MySQL table" %(item_count)
