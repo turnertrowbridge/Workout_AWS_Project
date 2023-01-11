@@ -10,6 +10,7 @@ import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import {SqsEventSource} from "aws-cdk-lib/aws-lambda-event-sources";
 import * as path from 'path';
+import {ManagedPolicy, Role, ServicePrincipal} from "aws-cdk-lib/aws-iam";
 
 
 export class WorkoutProjectStack extends cdk.Stack {
@@ -88,6 +89,16 @@ export class WorkoutProjectStack extends cdk.Stack {
       value: topic.topicArn,
       description: 'The arn of the SNS topic',
     });
+
+
+    // const lambdaRole = new Role(this, 'lambaRole', {
+    //                 roleName: 'lambdaRole',
+    //                 assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+    //                 managedPolicies: [
+    //                     ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaVPCAccessExecutionRole"),
+    //                     ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")
+    //                 ]
+    //             })
 
 
     const dockerfile = path.join(__dirname, '../lambda');
