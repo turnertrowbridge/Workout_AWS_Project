@@ -1,5 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
-import {RemovalPolicy} from 'aws-cdk-lib';
+import {Duration, RemovalPolicy} from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as rds from 'aws-cdk-lib/aws-rds';
@@ -31,8 +31,13 @@ export class WorkoutProjectStack extends cdk.Stack {
           subnetType: ec2.SubnetType.PUBLIC
         }
       ],
-      natGateways: 0
-      });
+      natGateways: 0,
+      gatewayEndpoints: {
+        S3: {
+          service: ec2.GatewayVpcEndpointAwsService.S3
+        }
+      }
+    });
 
 
     vpc.addFlowLog('FlowLogCloudWatch');
@@ -91,25 +96,19 @@ export class WorkoutProjectStack extends cdk.Stack {
     });
 
 
-    // const lambdaRole = new Role(this, 'lambaRole', {
-    //                 roleName: 'lambdaRole',
-    //                 assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-    //                 managedPolicies: [
-    //                     ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaVPCAccessExecutionRole"),
-    //                     ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")
-    //                 ]
-    //             })
-
-
     const dockerfile = path.join(__dirname, '../lambda');
+
     const add_workout_lambda = new lambda.DockerImageFunction(this, "add-workout", {
       code: lambda.DockerImageCode.fromImageAsset(dockerfile),
       architecture: lambda.Architecture.ARM_64,
-      vpc
+      vpc,
+      timeout: Duration.seconds(15),
     });
 
     // permit add_workout to write to table
     workoutTable.grantConnect(add_workout_lambda);
+    bucket.grantReadWrite(add_workout_lambda);
+
 
 
     // create read_workout lambda

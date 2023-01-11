@@ -4,19 +4,12 @@ import rds_config
 import pymysql
 import re
 import datetime
-from botocore.client import Config
-import boto3
-# import os
-from smart_open.smart_open_lib import open
+from smart_open import smart_open
 
 # rds settings
 db_endpoint = rds_config.db_endpoint
 db_username = rds_config.db_username
 db_password = rds_config.db_password
-
-
-config = Config(connect_timeout=5, retries={'max_attempts': 0})
-s3 = boto3.client('s3', config=config)
 
 
 logger = logging.getLogger()
@@ -61,12 +54,9 @@ def modify_exercise_name(exercise: str):
     return exercise
 
 
-def read_txt_file(file_name: str):
-
+def read_txt_file():
     line_num = 0
-    for encoded_line in open('s3://workoutprojectstack-testbucketworkout12327b145c6-cvo04t2n69d1/text.txt'):
-        logger.info('Connected to s3 bucket')
-        line = encoded_line.decode('utf8')
+    for line in smart_open('s3://workoutprojectstack-testbucketworkout12327b145c6-cvo04t2n69d1/text.txt', 'r'):
         if line_num == 0:
             first_line = re.search('(?<!\s)^(.+)$', line)
             workout_table_data['workout_title'] = (first_line.group())
@@ -134,7 +124,7 @@ def total_weight_update(total_weight: float):
 
 def lambda_handler(event, context):
 
-    read_txt_file('text.txt')
+    read_txt_file()
 
     try:
         conn = pymysql.connect(host=db_endpoint, user=db_username, passwd=db_password, connect_timeout=5)
