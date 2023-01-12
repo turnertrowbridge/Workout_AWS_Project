@@ -8,7 +8,7 @@ import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import {SqsEventSource} from "aws-cdk-lib/aws-lambda-event-sources";
+import {S3EventSource, SqsEventSource} from "aws-cdk-lib/aws-lambda-event-sources";
 import * as path from 'path';
 import {ManagedPolicy, Role, ServicePrincipal} from "aws-cdk-lib/aws-iam";
 
@@ -43,22 +43,21 @@ export class WorkoutProjectStack extends cdk.Stack {
     vpc.addFlowLog('FlowLogCloudWatch');
 
 
-    const bucket = new s3.Bucket(this, 'test-bucket-workout-123', {
+    const bucket = new s3.Bucket(this, 'workout-uploads', {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      bucketName: 'workouts-bucket'
     });
 
 
     // add security group
-    const mySG = new ec2.SecurityGroup(this, 'security-group 1', {
+    const mySG = new ec2.SecurityGroup(this, 'security-group-1', {
       vpc: vpc,
       description: 'CDK Security Group'
     });
 
     mySG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'allow ssh access from the world');
 
-    // mySG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(5432));
-    // mySG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(3306));
 
     // create MySQL table
     const workoutTable =  new rds.DatabaseInstance(this, 'WorkoutTrackingTable', {
@@ -67,11 +66,14 @@ export class WorkoutProjectStack extends cdk.Stack {
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_ISOLATED
       },
-      credentials: rds.Credentials.fromGeneratedSecret('ttrow99'),
+      credentials: rds.Credentials.fromGeneratedSecret('databaseSecret', {
+        secretName: 'databaseSecretName'
+      }),
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
       publiclyAccessible: false,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       allocatedStorage: 20,
+      backupRetention: Duration.days(0)
     });
 
     workoutTable.connections.allowDefaultPortFromAnyIpv4();
@@ -103,7 +105,14 @@ export class WorkoutProjectStack extends cdk.Stack {
       architecture: lambda.Architecture.ARM_64,
       vpc,
       timeout: Duration.seconds(15),
+      environment:{
+        'secret_name': workoutTable.secret!.secretName,
+        'region_name': this.region,
+        'bucket_name': bucket.bucketName
+      },
     });
+
+
 
     // permit add_workout to write to table
     workoutTable.grantConnect(add_workout_lambda);
@@ -116,7 +125,7 @@ export class WorkoutProjectStack extends cdk.Stack {
       code: new lambda.InlineCode("./lambda"),
       runtime: lambda.Runtime.PYTHON_3_9,
       handler: 'read_workout.lambda_handler',
-      vpc
+      vpc,
     });
 
 
@@ -130,5 +139,10 @@ export class WorkoutProjectStack extends cdk.Stack {
           batchSize: 1,
         })
     );
+
+    add_workout_lambda.addEventSource(new S3EventSource(bucket, {
+    events: [ s3.EventType.OBJECT_CREATED],
+}));
+
   }
 }

@@ -1,16 +1,16 @@
+import os
 import sys
 import logging
+from botocore.exceptions import ClientError
 import rds_config
 import pymysql
 import re
 import datetime
 from smart_open import smart_open
+import boto3
+import json
 
-# rds settings
-db_endpoint = rds_config.db_endpoint
-db_username = rds_config.db_username
-db_password = rds_config.db_password
-
+bucket_name = os.environ['bucket_name']
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -46,6 +46,32 @@ exercise_data = {
     'weight': float
 }
 
+secret_dict = {}
+
+def get_secret():
+
+    secret_name = "databaseSecretName"
+    region_name = "us-west-2"
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=os.environ['region_name']
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=os.environ['secret_name']
+        )
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+    # Decrypts secret using the associated KMS key.
+    secret_dict = json.loads((get_secret_value_response['SecretString']))
+
 
 def modify_exercise_name(exercise: str):
     exercise = exercise.replace(" ", "")
@@ -56,7 +82,7 @@ def modify_exercise_name(exercise: str):
 
 def read_txt_file():
     line_num = 0
-    for line in smart_open('s3://workoutprojectstack-testbucketworkout12327b145c6-cvo04t2n69d1/text.txt', 'r'):
+    for line in smart_open(f's3://{bucket_name}/text.txt', 'r'):
         if line_num == 0:
             first_line = re.search('(?<!\s)^(.+)$', line)
             workout_table_data['workout_title'] = (first_line.group())
@@ -127,7 +153,10 @@ def lambda_handler(event, context):
     read_txt_file()
 
     try:
-        conn = pymysql.connect(host=db_endpoint, user=db_username, passwd=db_password, connect_timeout=5)
+        conn = pymysql.connect(host=secret_dict['host'],
+                               user=secret_dict['username'],
+                               passwd=secret_dict['password'],
+                               connect_timeout=5)
     except pymysql.MySQLError as e:
         logger.error('ERROR: Unexpected error: Could not connect to MySQL instance.')
         logger.error(e)
