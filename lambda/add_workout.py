@@ -46,7 +46,6 @@ exercise_data = {
     'weight': float
 }
 
-secret_dict = {}
 
 def get_secret():
 
@@ -57,12 +56,12 @@ def get_secret():
     session = boto3.session.Session()
     client = session.client(
         service_name='secretsmanager',
-        region_name=os.environ['region_name']
+        region_name=region_name
     )
 
     try:
         get_secret_value_response = client.get_secret_value(
-            SecretId=os.environ['secret_name']
+            SecretId=secret_name
         )
     except ClientError as e:
         # For a list of exceptions thrown, see
@@ -70,8 +69,8 @@ def get_secret():
         raise e
 
     # Decrypts secret using the associated KMS key.
-    secret_dict = json.loads((get_secret_value_response['SecretString']))
-
+    secret_dict = get_secret_value_response['SecretString']
+    return secret_dict
 
 def modify_exercise_name(exercise: str):
     exercise = exercise.replace(" ", "")
@@ -149,7 +148,7 @@ def total_weight_update(total_weight: float):
 
 
 def lambda_handler(event, context):
-
+    secret_dict = get_secret()
     read_txt_file()
 
     try:
