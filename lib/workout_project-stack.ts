@@ -10,6 +10,7 @@ import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import {S3EventSource, SqsEventSource} from "aws-cdk-lib/aws-lambda-event-sources";
 import * as path from 'path';
+import * as logs from 'aws-cdk-lib/aws-logs'
 import {ManagedPolicy, Role, ServicePrincipal} from "aws-cdk-lib/aws-iam";
 
 

@@ -48,24 +48,28 @@ exercise_data = {
 
 
 def get_secret():
-
+    logger.info('Finding Secret')
     secret_name = "databaseSecretName"
     region_name = "us-west-2"
 
     # Create a Secrets Manager client
     session = boto3.session.Session()
+    logger.info('Boto3 Session Attempting to Start')
     client = session.client(
         service_name='secretsmanager',
         region_name=region_name
     )
-
+    logger.info('Boto3 Session Started')
     try:
+        logger.info('Trying to get secret name')
         get_secret_value_response = client.get_secret_value(
             SecretId=secret_name
         )
     except ClientError as e:
         # For a list of exceptions thrown, see
         # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        logger.error('Error: Could not retrieve secret')
+        logger.error(e)
         raise e
 
     # Decrypts secret using the associated KMS key.
@@ -148,13 +152,13 @@ def total_weight_update(total_weight: float):
 
 
 def lambda_handler(event, context):
-    secret_dict = get_secret()
+    # secret_dict = get_secret()
     read_txt_file()
 
     try:
-        conn = pymysql.connect(host=secret_dict['host'],
-                               user=secret_dict['username'],
-                               passwd=secret_dict['password'],
+        conn = pymysql.connect(host=rds_config.db_endpoint,
+                               user=rds_config.db_username,
+                               passwd=rds_config.db_password,
                                connect_timeout=5)
     except pymysql.MySQLError as e:
         logger.error('ERROR: Unexpected error: Could not connect to MySQL instance.')
