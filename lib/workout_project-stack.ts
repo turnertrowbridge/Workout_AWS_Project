@@ -1,7 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
-import {Duration, RemovalPolicy} from 'aws-cdk-lib';
+import {Duration} from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import {InterfaceVpcEndpointService, SubnetType} from 'aws-cdk-lib/aws-ec2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
@@ -10,8 +11,6 @@ import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import {S3EventSource, SqsEventSource} from "aws-cdk-lib/aws-lambda-event-sources";
 import * as path from 'path';
-import * as logs from 'aws-cdk-lib/aws-logs'
-import {ManagedPolicy, Role, ServicePrincipal} from "aws-cdk-lib/aws-iam";
 
 
 export class WorkoutProjectStack extends cdk.Stack {
@@ -40,8 +39,20 @@ export class WorkoutProjectStack extends cdk.Stack {
       }
     });
 
-
     vpc.addFlowLog('FlowLogCloudWatch');
+
+    // add security group
+    const mySG = new ec2.SecurityGroup(this, 'security-group-1', {
+      vpc: vpc,
+      description: 'CDK Security Group',
+    });
+
+
+    vpc.addInterfaceEndpoint('secretsmanager', {
+      service: new InterfaceVpcEndpointService('com.amazonaws.' + this.region + '.secretsmanager'),
+      privateDnsEnabled: true,
+      securityGroups: [mySG],
+    });
 
 
     const bucket = new s3.Bucket(this, 'workout-uploads', {
@@ -50,12 +61,20 @@ export class WorkoutProjectStack extends cdk.Stack {
       bucketName: 'workouts-bucket'
     });
 
+    // const nat_instance = new ec2.Instance(this, 'nat_instance', {
+    //   instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
+    //   machineImage: new ec2.GenericLinuxImage({
+    //     'us-west-2': 'ami-0fc08ccc5a7477361'
+    //   }),
+    //   vpc,
+    //   vpcSubnets: {
+    //     subnetType: ec2.SubnetType.PUBLIC
+    //   },
+    //   sourceDestCheck: false
+    // });
 
-    // add security group
-    const mySG = new ec2.SecurityGroup(this, 'security-group-1', {
-      vpc: vpc,
-      description: 'CDK Security Group'
-    });
+
+
 
     mySG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'allow ssh access from the world');
 
@@ -104,20 +123,23 @@ export class WorkoutProjectStack extends cdk.Stack {
     const add_workout_lambda = new lambda.DockerImageFunction(this, "add-workout", {
       code: lambda.DockerImageCode.fromImageAsset(dockerfile),
       architecture: lambda.Architecture.ARM_64,
-      vpc,
       timeout: Duration.seconds(15),
       environment:{
         'secret_name': workoutTable.secret!.secretName,
         'region_name': this.region,
         'bucket_name': bucket.bucketName
       },
+      vpc
     });
 
 
 
     // permit add_workout to write to table
+
     workoutTable.grantConnect(add_workout_lambda);
     bucket.grantReadWrite(add_workout_lambda);
+    workoutTable.secret!.grantRead(add_workout_lambda);
+    // add_workout_lambda.connections.allowTo(mySG, Port.allTcp());
 
 
 

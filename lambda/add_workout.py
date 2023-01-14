@@ -12,8 +12,10 @@ import json
 
 bucket_name = os.environ['bucket_name']
 
+# set up logger
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
 # create console handler and set level to debug
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
@@ -46,6 +48,39 @@ exercise_data = {
     'weight': float
 }
 
+def lambda_handler(event, context):
+    secret_dict = get_secret()
+    read_txt_file()
+
+    try:
+        conn = pymysql.connect(host=secret_dict['host'],
+                               user=secret_dict['username'],
+                               passwd=secret_dict['password'],
+                               connect_timeout=5)
+    except pymysql.MySQLError as e:
+        logger.error('ERROR: Unexpected error: Could not connect to MySQL instance.')
+        logger.error(e)
+        sys.exit()
+
+    logger.info('SUCCESS: Connection to RDS MySQL instance succeeded')
+
+    with conn.cursor() as cur:
+        cur.execute('CREATE DATABASE IF NOT EXISTS Workout_Tracker')
+        cur.execute('USE Workout_Tracker')
+        cur.execute(create_workout_table())
+        cur.execute(convert_to_mysql('Workouts', workout_table_data))
+
+        total_weight = 0
+        for exercise in exercises:
+            cur.execute(create_exercise_table(exercise))
+            for i in range(1, len(exercises[exercise]) + 1):
+                cur.execute(convert_to_mysql(exercise, exercises[exercise][f"{i}"]))
+                total_weight += float(exercises[exercise][f"{i}"]['weight'])
+
+        cur.execute(total_weight_update(total_weight))
+        conn.commit()
+
+
 
 def get_secret():
     logger.info('Finding Secret')
@@ -73,13 +108,14 @@ def get_secret():
         raise e
 
     # Decrypts secret using the associated KMS key.
-    secret_dict = get_secret_value_response['SecretString']
+    secret_dict = json.loads(get_secret_value_response['SecretString'])
+    logger.info(secret_dict)
     return secret_dict
 
 def modify_exercise_name(exercise: str):
-    exercise = exercise.replace(" ", "")
-    exercise = exercise.replace("(", "_")
-    exercise = exercise.replace(")", "")
+    exercise = exercise.replace(" ", "")    # remove whitespaces
+    exercise = exercise.replace("(", "_")   # replace left parenthesis with dashes
+    exercise = exercise.replace(")", "")    # remove right parenthesis
     return exercise
 
 
@@ -87,10 +123,11 @@ def read_txt_file():
     line_num = 0
     for line in smart_open(f's3://{bucket_name}/text.txt', 'r'):
         if line_num == 0:
-            first_line = re.search('(?<!\s)^(.+)$', line)
+            first_line = re.search('(?<!\s)^(.+)$', line)       # search for the title in first line
             workout_table_data['workout_title'] = (first_line.group())
 
         elif line_num == 1:
+            # strip time from second line
             date = datetime.datetime.strptime(line, '%A, %B %d, %Y at %I:%M %p\n')
             workout_table_data['date'] = (date.strftime('%Y-%m-%d'))
             workout_table_data['time'] = (date.strftime('%I:%M'))
@@ -98,14 +135,17 @@ def read_txt_file():
             workout_table_data['day_of_week'] = (date.strftime('%A'))
 
         else:
+            # check if a line contains "Set"
             is_set = re.search('Set', line)
 
             if not is_set:
+                # find if it's an exercise name and not a blank line
                 is_exercise_name = re.search('[^\n].*(?=\n)', line)
                 if is_exercise_name:
                     exercise_name = modify_exercise_name(is_exercise_name.group())
                     exercises[f'{exercise_name}'] = {}
 
+            # parse set line for the relevant data
             if is_set:
                 set_num = re.search('(?<=Set\s)(\d*)(?=:)', line)
                 weight = re.search('(?<=:\s)(.*)(?=\slb)', line)
@@ -151,35 +191,4 @@ def total_weight_update(total_weight: float):
     return sql
 
 
-def lambda_handler(event, context):
-    # secret_dict = get_secret()
-    read_txt_file()
-
-    try:
-        conn = pymysql.connect(host=rds_config.db_endpoint,
-                               user=rds_config.db_username,
-                               passwd=rds_config.db_password,
-                               connect_timeout=5)
-    except pymysql.MySQLError as e:
-        logger.error('ERROR: Unexpected error: Could not connect to MySQL instance.')
-        logger.error(e)
-        sys.exit()
-
-    logger.info('SUCCESS: Connection to RDS MySQL instance succeeded')
-
-    with conn.cursor() as cur:
-        cur.execute('CREATE DATABASE IF NOT EXISTS Workout_Tracker')
-        cur.execute('USE Workout_Tracker')
-        cur.execute(create_workout_table())
-        cur.execute(convert_to_mysql('Workouts', workout_table_data))
-
-        total_weight = 0
-        for exercise in exercises:
-            cur.execute(create_exercise_table(exercise))
-            for i in range(1, len(exercises[exercise]) + 1):
-                cur.execute(convert_to_mysql(exercise, exercises[exercise][f"{i}"]))
-                total_weight += float(exercises[exercise][f"{i}"]['weight'])
-
-        cur.execute(total_weight_update(total_weight))
-        conn.commit()
 
