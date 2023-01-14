@@ -10,7 +10,7 @@ Create a way to send the workout that has a predictable format to a database tha
 Using the AWS Free Tier resources, receive workout data as an email via Simple Email Services, and trigger a Lambda Function. This Lambda function runs a script to parse the data from the email and upload the parsed data to an RDS MySQL Database instance. Another Lambda would be run after the data is uploaded to send a workout summary back to the user. Set up a bastion host to remotely ssh into that allows access to the database.
   
 **Database Schema:**  
-![Workout_MySQL drawio (1)](https://user-images.githubusercontent.com/69882779/212498299-ebfe5e1a-7cf2-4e84-bdc6-64e5ec06448b.png)
+![Workout_MySQL drawio](https://user-images.githubusercontent.com/69882779/212497618-71141cf2-997d-4a1b-b9ac-168e84547227.png)
 
   
 **Current Implementation:**  
