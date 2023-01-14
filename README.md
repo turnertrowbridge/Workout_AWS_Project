@@ -3,7 +3,7 @@
 **Background:**  
 While I go to the gym and work out I like to track my weightlifting progress on an app. I would like to see more advanced statistics about my workouts but the app wants you to pay an $8.99 monthly subscription.  
   
-**Idea:**
+**Idea:**  
 Create a way to send the workout that has a predictable format to a database and set up some statistics to track or request that is free or cheap to maintain.  
   
 **Implementation Idea:**  
