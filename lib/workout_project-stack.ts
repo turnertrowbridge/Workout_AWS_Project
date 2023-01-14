@@ -32,6 +32,7 @@ export class WorkoutProjectStack extends cdk.Stack {
         }
       ],
       natGateways: 0,
+      maxAzs: 1,
       gatewayEndpoints: {
         S3: {
           service: ec2.GatewayVpcEndpointAwsService.S3
