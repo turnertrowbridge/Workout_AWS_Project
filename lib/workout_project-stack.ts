@@ -62,20 +62,6 @@ export class WorkoutProjectStack extends cdk.Stack {
       bucketName: 'workouts-bucket'
     });
 
-    // const nat_instance = new ec2.Instance(this, 'nat_instance', {
-    //   instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
-    //   machineImage: new ec2.GenericLinuxImage({
-    //     'us-west-2': 'ami-0fc08ccc5a7477361'
-    //   }),
-    //   vpc,
-    //   vpcSubnets: {
-    //     subnetType: ec2.SubnetType.PUBLIC
-    //   },
-    //   sourceDestCheck: false
-    // });
-
-
-
 
     mySG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'allow ssh access from the world');
 
@@ -109,14 +95,13 @@ export class WorkoutProjectStack extends cdk.Stack {
     });
 
 
-
-    // subscribe queue to topic
-    topic.addSubscription(new subs.SqsSubscription(queue));
-
-    new cdk.CfnOutput(this, 'snsTopicArn', {
-      value: topic.topicArn,
-      description: 'The arn of the SNS topic',
-    });
+    // // subscribe queue to topic
+    // topic.addSubscription(new subs.SqsSubscription(queue));
+    //
+    // new cdk.CfnOutput(this, 'snsTopicArn', {
+    //   value: topic.topicArn,
+    //   description: 'The arn of the SNS topic',
+    // });
 
 
     const dockerfile = path.join(__dirname, '../lambda');
@@ -133,36 +118,31 @@ export class WorkoutProjectStack extends cdk.Stack {
       vpc
     });
 
-
-
-    // permit add_workout to write to table
-
+    // give add_work_lambda permissions to RDS, S3, and SM
     workoutTable.grantConnect(add_workout_lambda);
     bucket.grantReadWrite(add_workout_lambda);
     workoutTable.secret!.grantRead(add_workout_lambda);
-    // add_workout_lambda.connections.allowTo(mySG, Port.allTcp());
 
 
-
-    // create read_workout lambda
-    const read_workout_lambda = new lambda.Function(this, "read-workout-lambda-function", {
-      code: new lambda.InlineCode("./lambda"),
-      runtime: lambda.Runtime.PYTHON_3_9,
-      handler: 'read_workout.lambda_handler',
-      vpc,
-    });
-
-
-     // permit read_workout to read from table
-    workoutTable.grantConnect(read_workout_lambda);
+    // // create read_workout lambda
+    // const read_workout_lambda = new lambda.Function(this, "read-workout-lambda-function", {
+    //   code: new lambda.InlineCode("./lambda"),
+    //   runtime: lambda.Runtime.PYTHON_3_9,
+    //   handler: 'read_workout.lambda_handler',
+    //   vpc,
+    // });
 
 
-    // add sqs queue as event source for lambda
-    add_workout_lambda.addEventSource(
-        new SqsEventSource(queue, {
-          batchSize: 1,
-        })
-    );
+    //  // permit read_workout to read from table
+    // workoutTable.grantConnect(read_workout_lambda);
+
+
+    // // add sqs queue as event source for lambda
+    // add_workout_lambda.addEventSource(
+    //     new SqsEventSource(queue, {
+    //       batchSize: 1,
+    //     })
+    // );
 
     add_workout_lambda.addEventSource(new S3EventSource(bucket, {
     events: [ s3.EventType.OBJECT_CREATED],
