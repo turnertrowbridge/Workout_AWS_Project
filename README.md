@@ -1,5 +1,7 @@
 # Workout Database Project Using AWS
 
+*Check lambda folder for python script*
+
 **Background:**  
 I like to go to gym and track my weightlifting progress on an app. I would like to see more advanced statistics about my workouts but the app wants you to pay an $8.99 monthly subscription.  
   
