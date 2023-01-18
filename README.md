@@ -17,7 +17,7 @@ Using the AWS Free Tier resources, receive workout data as an email via Simple E
 A user must manually upload a .txt file to S3 Bucket and call the lambda for the database to store the data. No summary report or SES implementation yet.
 
 **Roadbumps:**
-Trying to avoid the use of a costly NAT gateway as this costs $0.045 per availability zone per hour. The NAT gateway is necessary to retrieve the S3 Bucket data and the secret from the Secrets Manager. This is due to the Lambda being in VPC preventing internet access without the gateway. The solution I have currently implemented is a free VPC endpoint that allows the lambda to connect to the S3 Bucket and a $0.005 per hour VPC Interface to Secrets Manager.
+Trying to avoid the use of a costly NAT gateway as this costs $0.045 per availability zone per hour. The NAT gateway is necessary to retrieve the S3 Bucket data and the secret from the Secrets Manager. This is due to the Lambda being in the VPC, thus preventing internet access unless there is a NAT gateway. The solution I have currently implemented is a free VPC endpoint that allows the lambda to connect to the S3 Bucket and a $0.005 per hour VPC Interface to Secrets Manager.
   
 **Current AWS Architecture:**  
 ![AWS_WorkoutProjectDiagram drawio](https://user-images.githubusercontent.com/69882779/212501329-8aa84b75-940a-415f-a5b4-c69841ca9309.png)
